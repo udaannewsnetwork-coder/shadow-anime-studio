@@ -56,15 +56,21 @@
 
  <div class="card span12" id="clipEditorCard" style="margin-top:16px">
   <div class="eyebrow">NEW · MOBILE VIDEO EDITOR</div><h3>5 · Anime Clip Editor & Timeline</h3>
-  <p>Multiple clips add karo, order badlo, trim points set karo, playback speed aur title overlay edit karo. Final export browser ke supported WebM format mein hoga. Is editor ka export silent hai; original clip audio mix abhi supported nahi hai.</p>
+  <p>Multiple video clips ke saath voice-over, background music aur sound effects ko alag audio tracks par arrange karke final WebM export karo. Video clips ka original audio abhi mix nahi hota; alag audio files add karo.</p>
   <div class="field"><label>Add multiple video clips</label><input id="editClipFiles" type="file" accept="video/*" multiple></div>
   <div id="editTimeline" class="empty">Abhi timeline empty hai. Upar se video clips add karo.</div>
-  <div class="actions" style="margin-top:12px"><button class="btn small ghost" id="saveEditProject">Export edit project JSON</button><button class="btn small primary" id="renderEditVideo">Render edited video (silent WebM)</button><span class="muted" id="editStatus" style="font-size:12px">Ready · Short clips se test karo.</span></div>
+  <div style="border-top:1px solid #303951;margin-top:18px;padding-top:16px">
+   <div class="eyebrow">AUDIO MIXER · MULTI-TRACK</div><h3>Audio, Music & Sound Effects Timeline</h3>
+   <p>Voice-over, background music aur SFX alag tracks par add karo. Har track ka timeline start, trim, volume aur fade control karo.</p>
+   <div class="field"><label>Add audio / voice-over / music / sound effects (multiple files)</label><input id="editAudioFiles" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac" multiple></div>
+   <div id="editAudioTimeline" class="empty">Abhi audio tracks nahi hain. Audio files select karo.</div>
+  </div>
+  <div class="actions" style="margin-top:12px"><button class="btn small ghost" id="saveEditProject">Export edit project JSON</button><button class="btn small primary" id="renderEditVideo">Render video + audio mix (WebM)</button><span class="muted" id="editStatus" style="font-size:12px">Ready · Short clips se test karo.</span></div>
   <video id="editPreviewVideo" playsinline muted style="display:none"></video>
   <canvas id="editRenderCanvas" width="1280" height="720" style="display:none;width:100%;margin-top:12px;border-radius:12px;background:#05070c"></canvas>
   <video id="editRenderedPreview" class="video" controls playsinline style="display:none"></video>
   <div class="actions"><button class="btn small ghost" id="downloadEditedVideo" type="button" disabled>Download edited WebM</button></div>
-  <div class="notice">Editing controls: clip order ↑/↓, trim start/end, speed 0.5×–2×, title overlay, delete. Rendering real-time hoti hai; phone lock ya tab close mat karna. Export mein original audio preserve nahi hota.</div>
+  <div class="notice">Video clips sequentially render hote hain. Audio tracks timeline ke seconds ke hisaab se mix hote hain: voice/music/SFX, trim, volume aur fade in/out. Original video audio abhi preserve nahi hota. Rendering real-time hai; phone active rakho. Android browser codec/memory limits ke kaaran pehle 1–2 short clips test karo.</div>
  </div>
 </div>
 </section>
@@ -287,8 +293,53 @@ $("clearAnimClip").onclick=()=>{
  if(animClipUrl)URL.revokeObjectURL(animClipUrl);animClipUrl=null;
 };
 
-// Mobile timeline editor: sequential canvas render, silent WebM output.
+// Mobile timeline editor: sequential video render with a separate Web Audio mix.
 let editClips=[], editOutputUrl=null;
+let editAudioTracks=[];
+const audioInput=$("editAudioFiles");
+audioInput.addEventListener("change",async e=>{
+ const files=Array.from(e.target.files||[]);
+ for(const file of files){
+  const url=URL.createObjectURL(file),probe=new Audio();probe.preload="metadata";probe.src=url;
+  await new Promise(resolve=>{probe.onloadedmetadata=resolve;probe.onerror=resolve});
+  if(!Number.isFinite(probe.duration)||probe.duration<=0){URL.revokeObjectURL(url);continue}
+  editAudioTracks.push({fileName:file.name,file,url,duration:probe.duration,kind:"music",timelineStart:0,trimStart:0,trimEnd:probe.duration,volume:0.8,fadeIn:0,fadeOut:0});
+ }
+ audioInput.value="";drawEditAudioTimeline();
+});
+function drawEditAudioTimeline(){
+ const root=$("editAudioTimeline");root.innerHTML="";
+ if(!editAudioTracks.length){root.className="empty";root.textContent="Abhi audio tracks nahi hain. Audio files select karo.";return}
+ root.className="";
+ editAudioTracks.forEach((track,i)=>{
+  const card=document.createElement("div");card.className="scene";
+  const head=document.createElement("strong");head.textContent=(i+1)+". "+track.fileName;card.appendChild(head);
+  const fields=document.createElement("div");fields.className="grid";
+  const makeInput=(label,value,min,max,step,cb)=>{
+   const wrap=document.createElement("div");wrap.className="span6";
+   const lab=document.createElement("label");lab.textContent=label;lab.style.cssText="display:block;color:#aeb8ce;font-size:12px;margin:8px 0 5px";
+   const inp=document.createElement("input");inp.type="number";inp.value=value;inp.min=min;inp.max=max;inp.step=step;inp.style.cssText="width:100%;background:#0b101c;color:white;border:1px solid #303a52;border-radius:8px;padding:9px";
+   inp.onchange=()=>{cb(Number(inp.value));drawEditAudioTimeline()};wrap.append(lab,inp);fields.appendChild(wrap);
+  };
+  const kindWrap=document.createElement("div");kindWrap.className="span6";
+  const kindLab=document.createElement("label");kindLab.textContent="Track type";kindLab.style.cssText="display:block;color:#aeb8ce;font-size:12px;margin:8px 0 5px";
+  const kind=document.createElement("select");kind.style.cssText="width:100%;background:#0b101c;color:white;border:1px solid #303a52;border-radius:8px;padding:9px";
+  [["voice","Voice-over / dialogue"],["music","Background music"],["sfx","Sound effect"]].forEach(([v,l])=>{const o=document.createElement("option");o.value=v;o.textContent=l;kind.appendChild(o)});
+  kind.value=track.kind;kind.onchange=()=>track.kind=kind.value;kindWrap.append(kindLab,kind);fields.appendChild(kindWrap);
+  makeInput("Timeline start (seconds)",track.timelineStart,0,36000,0.1,v=>track.timelineStart=Math.max(0,v));
+  makeInput("Trim start (seconds)",track.trimStart,0,track.duration,0.1,v=>track.trimStart=Math.max(0,Math.min(v,track.trimEnd-0.05)));
+  makeInput("Trim end (seconds)",track.trimEnd,0.05,track.duration,0.1,v=>track.trimEnd=Math.max(track.trimStart+0.05,Math.min(v,track.duration)));
+  makeInput("Volume (0 to 1)",track.volume,0,1,0.05,v=>track.volume=Math.max(0,Math.min(1,v)));
+  makeInput("Fade in (seconds)",track.fadeIn,0,60,0.1,v=>track.fadeIn=Math.max(0,v));
+  makeInput("Fade out (seconds)",track.fadeOut,0,60,0.1,v=>track.fadeOut=Math.max(0,v));
+  card.appendChild(fields);
+  const actions=document.createElement("div");actions.className="actions";actions.style.marginTop="9px";
+  const remove=document.createElement("button");remove.className="btn small ghost";remove.textContent="Delete audio track";
+  remove.onclick=()=>{URL.revokeObjectURL(track.url);editAudioTracks.splice(i,1);drawEditAudioTimeline()};
+  actions.appendChild(remove);card.appendChild(actions);root.appendChild(card);
+ });
+}
+
 const editInput=$("editClipFiles");
 editInput.addEventListener("change",async e=>{
  const files=Array.from(e.target.files||[]);
@@ -326,7 +377,7 @@ function drawEditTimeline(){
 }
 $("saveEditProject").onclick=()=>{
  if(!editClips.length){alert("Pehle clips add karo.");return}
- const data={app:"SHADOW Anime Studio",type:"Video edit timeline",createdAt:new Date().toISOString(),clips:editClips.map(c=>({fileName:c.fileName,start:c.start,end:c.end,speed:c.speed,title:c.title}))};
+ const data={app:"SHADOW Anime Studio",type:"Video + audio edit timeline",createdAt:new Date().toISOString(),clips:editClips.map(c=>({fileName:c.fileName,start:c.start,end:c.end,speed:c.speed,title:c.title})),audioTracks:editAudioTracks.map(a=>({fileName:a.fileName,kind:a.kind,timelineStart:a.timelineStart,trimStart:a.trimStart,trimEnd:a.trimEnd,volume:a.volume,fadeIn:a.fadeIn,fadeOut:a.fadeOut}))};
  download(JSON.stringify(data,null,2),"shadow-edit-project.json","application/json");
  logHistory("Video edit project settings exported");
 };
@@ -338,11 +389,31 @@ $("renderEditVideo").onclick=async()=>{
  btn.disabled=true;$("downloadEditedVideo").disabled=true;status.textContent="Rendering started… phone ko active rakho.";
  const canvas=$("editRenderCanvas"),ctx=canvas.getContext("2d"),video=$("editPreviewVideo");
  canvas.style.display="block";canvas.scrollIntoView({behavior:"smooth",block:"center"});
- const stream=canvas.captureStream(24);let recorder;
+ const videoStream=canvas.captureStream(24);let recorder,audioCtx=null,audioDestination=null;
  try{
   const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
   if(!mime)throw new Error("WebM encoder is not available in this browser.");
-  const chunks=[];recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4500000});
+  if(editAudioTracks.length){
+   const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+   if(!AudioContextClass)throw new Error("Web Audio is not supported in this browser.");
+   audioCtx=new AudioContextClass();audioDestination=audioCtx.createMediaStreamDestination();await audioCtx.resume();
+   const totalDuration=editClips.reduce((sum,c)=>sum+(c.end-c.start)/c.speed,0);
+   const decoded=await Promise.all(editAudioTracks.map(async track=>({track,buffer:await audioCtx.decodeAudioData((await track.file.arrayBuffer()).slice(0))})));
+   const audioStartTime=audioCtx.currentTime+0.08;
+   decoded.forEach(({track,buffer})=>{
+    if(track.trimEnd<=track.trimStart)return;
+    const source=audioCtx.createBufferSource(),gain=audioCtx.createGain();source.buffer=buffer;source.connect(gain);gain.connect(audioDestination);
+    const startAt=audioStartTime+Math.max(0,track.timelineStart),playDuration=Math.min(track.trimEnd-track.trimStart,Math.max(0,totalDuration-track.timelineStart));
+    if(playDuration<=0)return;
+    const peak=Math.max(0,Math.min(1,track.volume)),fadeIn=Math.min(track.fadeIn,playDuration),fadeOut=Math.min(track.fadeOut,Math.max(0,playDuration-fadeIn));
+    gain.gain.setValueAtTime(0,startAt);
+    if(fadeIn>0)gain.gain.linearRampToValueAtTime(peak,startAt+fadeIn);else gain.gain.setValueAtTime(peak,startAt);
+    if(fadeOut>0){const fadeAt=startAt+playDuration-fadeOut;gain.gain.setValueAtTime(peak,fadeAt);gain.gain.linearRampToValueAtTime(0,startAt+playDuration)}else gain.gain.setValueAtTime(peak,startAt+playDuration);
+    source.start(startAt,track.trimStart,playDuration);
+   });
+  }
+  const mixedStream=new MediaStream([...videoStream.getVideoTracks(),...(audioDestination?audioDestination.stream.getAudioTracks():[])]);
+  const chunks=[];recorder=new MediaRecorder(mixedStream,{mimeType:mime,videoBitsPerSecond:4500000});
   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
   const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error("Recorder failed"))});
   recorder.start(500);
@@ -372,10 +443,10 @@ $("renderEditVideo").onclick=async()=>{
   if(editOutputUrl)URL.revokeObjectURL(editOutputUrl);
   editOutputUrl=URL.createObjectURL(new Blob(chunks,{type:mime}));
   $("editRenderedPreview").src=editOutputUrl;$("editRenderedPreview").style.display="block";
-  $("downloadEditedVideo").disabled=false;status.textContent="Render complete · "+(chunks.reduce((n,c)=>n+c.size,0)/1048576).toFixed(1)+" MB WebM";
-  logHistory("Edited video rendered: "+editClips.length+" clips (silent WebM)");
+  $("downloadEditedVideo").disabled=false;status.textContent="Render complete · "+(chunks.reduce((n,c)=>n+c.size,0)/1048576).toFixed(1)+" MB WebM · "+editAudioTracks.length+" audio tracks mixed";
+  logHistory("Edited video rendered: "+editClips.length+" video clips + "+editAudioTracks.length+" audio tracks (WebM mix)");
  }catch(err){if(recorder&&recorder.state!=="inactive")recorder.stop();status.textContent="Render failed: "+err.message;alert("Video render nahi ho paya: "+err.message)}
- finally{stream.getTracks().forEach(t=>t.stop());video.pause();btn.disabled=false}
+ finally{videoStream.getTracks().forEach(t=>t.stop());if(audioDestination)audioDestination.stream.getTracks().forEach(t=>t.stop());if(audioCtx)await audioCtx.close().catch(()=>{});video.pause();btn.disabled=false}
 };
 $("downloadEditedVideo").onclick=()=>{if(editOutputUrl)download(editOutputUrl,"shadow-edited-anime.webm","video/webm")};
 
