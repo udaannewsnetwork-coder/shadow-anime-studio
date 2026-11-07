@@ -16,7 +16,7 @@
 <button class="nav" data-page="dub"><b>♫</b><span>Anime Dubbing</span></button>
 <button class="nav" data-page="story"><b>✦</b><span>Story Creator</span></button>
 <button class="nav" data-page="characters"><b>♙</b><span>Characters</span></button>
-<button class="nav" data-page="voices"><b>◉</b><span>Voice Profiles</span></button><button class="nav" data-page="history"><b>▤</b><span>History</span></button>
+<button class="nav" data-page="voices"><b>◉</b><span>Voice Profiles</span></button><button class="nav" data-page="animation"><b>▶</b><span>AI Animation Lab</span></button><button class="nav" data-page="history"><b>▤</b><span>History</span></button>
 <div class="navlabel">PROJECT</div><button class="nav" data-page="guide"><b>⌘</b><span>How it works</span></button>
 <div class="sidefoot">SHADOW STUDIO · BUILD 01<br>Creative workspace</div></aside>
 <main class="main"><header class="top"><div><div class="eyebrow">CREATE WITHOUT LIMITS*</div><h1 id="heading">Your anime universe starts here.</h1><div class="muted" id="subheading">One workspace for dubbing, stories and characters.</div></div><div class="status"><i></i> Workspace ready</div></header>
@@ -26,10 +26,39 @@
 <section class="page" id="story"><div class="card span12" style="margin-bottom:16px;border-color:#66549b;background:linear-gradient(120deg,#211b3b,#111b2a)"><div class="eyebrow">NEW · ONE PROMPT ANIME CREATOR</div><h3 style="font-size:21px">Ek prompt se apna anime episode banao</h3><p>Apni story ka idea ek baar likho. SHADOW usse episode outline, character profiles, scene-by-scene dialogues aur AI video/image prompts mein badlega.</p><div class="field"><label>Apna anime prompt</label><textarea id="onePromptInput" style="min-height:130px" placeholder="Example: Ek gareeb student ko ek mysterious system milta hai. Woh shadow powers unlock karta hai, lekin har power ki ek keemat hai. Dark action fantasy, emotional story, Hindi dialogues..."></textarea></div><div class="grid"><div class="span6"><div class="field"><label>Genre</label><select id="onePromptGenre"><option>Action Fantasy</option><option>Science Fiction</option><option>Adventure</option><option>Romance / Drama</option><option>Thriller / Mystery</option><option>Comedy</option><option>Horror</option></select></div></div><div class="span6"><div class="field"><label>Episode length</label><select id="onePromptLength"><option value="3">3 minutes · Short</option><option value="5" selected>5 minutes · Standard</option><option value="10">10 minutes · Extended</option></select></div></div></div><div class="actions"><button class="btn primary" id="generateAnimePrompt">✦ Generate anime from my prompt</button><button class="btn ghost" id="exportAnimePack" type="button">⬇ Export anime production pack</button></div><div class="notice">Free mode: SHADOW can create a short motion-comic teaser from your scenes and export it as WebM. This is not full AI character animation; it uses cinematic text/art panels and has no generated dialogue audio.</div><div id="onePromptResult" style="margin-top:16px"></div></div><div class="grid"><div class="card span6"><h3>Story concept</h3><div class="field"><label>Anime title</label><input id="storyTitle" placeholder="e.g. LEVEL ZERO"></div><div class="field"><label>Genre</label><select id="genre"><option>Action Fantasy</option><option>Science Fiction</option><option>Adventure</option><option>Drama</option><option>Thriller / Mystery</option><option>Comedy</option></select></div><div class="field"><label>Core idea</label><textarea id="storyIdea" placeholder="A weak hero discovers..."></textarea></div><button class="btn primary" id="saveStory">Save story concept</button></div><div class="card span6"><h3>Episode & scene board</h3><div class="field"><label>Episode title</label><input id="episodeTitle" placeholder="Episode 1 — Awakening"></div><div class="field"><label>Scene description</label><textarea id="sceneText" placeholder="Location, action, mood, camera..."></textarea></div><div class="field"><label>Dialogue / narration</label><textarea id="sceneDialogue" placeholder="Character: The system has chosen you."></textarea></div><button class="btn primary" id="addScene">＋ Add scene</button></div><div class="card span12"><h3>Scene board</h3><div id="sceneList" class="empty">Your scenes will appear here.</div></div></div></section>
 <section class="page" id="characters"><div class="grid"><div class="card span6"><h3>Create a character</h3><div class="field"><label>Character name</label><input id="charName" placeholder="Name"></div><div class="field"><label>Role</label><select id="charRole"><option>Protagonist</option><option>Antagonist</option><option>Supporting</option><option>Mentor</option><option>Other</option></select></div><div class="field"><label>Appearance & personality</label><textarea id="charDesc" placeholder="Age range, outfit, visual traits, personality..."></textarea></div><div class="field"><label>Character voice type</label><select id="charVoiceGender"><option value="any">Any available voice</option><option value="male">Male voice preferred</option><option value="female">Female voice preferred</option></select></div><div class="field"><label>Assigned character voice</label><select id="charVoiceSelect"><option value="">Choose device voice after loading</option></select></div><div class="field"><label>Voice style notes</label><input id="charVoice" placeholder="Deep, calm, slightly rough Hindi voice"></div><button class="btn primary" id="addCharacter">＋ Add character</button></div><div class="card span6"><h3>Cast list</h3><div id="characterList" class="empty">No characters yet.</div></div></div></section>
 <section class="page" id="voices"><div class="card"><h3>Voice profile preview</h3><p>Try your device/browser's built-in text-to-speech voices. Available voices depend on Android and browser settings.</p><div class="field"><label>Character whose saved voice to use</label><select id="voiceCharacter"><option value="">Choose a character</option></select></div><div class="field"><label>Dialogue to preview</label><textarea id="voiceText">Main haar nahi maanunga. Yeh meri kahani ki shuruaat hai.</textarea></div><div class="field"><label>Available voice</label><select id="voiceSelect"></select></div><div class="field"><label>Speed <span id="rateValue">1.0×</span></label><input type="range" id="voiceRate" min=".6" max="1.4" step=".1" value="1"></div><div class="field"><label>Gender tag for selected device voice (manual)</label><select id="voiceGenderTag"><option value="neutral">Neutral / not sure</option><option value="male">Male</option><option value="female">Female</option></select><button class="btn small ghost" id="saveVoiceGenderTag">Save voice gender tag</button><div class="muted" id="voiceTagStatus" style="font-size:12px">Device/browser voices do not always provide gender information; tags are manual.</div><div class="actions"><button class="btn primary" id="speak">▶ Preview voice</button><button class="btn ghost" id="stopSpeak">Stop</button></div><div class="notice">Preview uses the selected character’s saved device voice where available. This is not voice cloning or downloadable dubbed audio.</div></div></section><section class="page" id="history"><div class="card"><h3>Project history</h3><p>Recent actions, saved scenes, characters and voice assignments on this device.</p><div class="actions"><button class="btn small primary" id="exportWorkspace">⬇ Export workspace backup</button><button class="btn small ghost" id="importWorkspaceBtn">⬆ Import backup</button><input type="file" id="importWorkspaceFile" accept=".json,application/json" hidden><button class="btn small ghost" id="clearHistory">Clear history</button></div><p class="muted" style="font-size:12px;margin-top:10px">Backup includes your story, scenes, characters, voice assignments, subtitles and activity history. Keep the JSON file somewhere safe.</p><div id="historyList" class="empty">Your activity will appear here.</div></div></section>
+<section class="page" id="animation">
+<div class="card" style="border-color:#66549b;background:linear-gradient(120deg,#211b3b,#111b2a)">
+ <div class="eyebrow">EXPERIMENTAL · FREE HOSTED MODEL</div><h3 style="font-size:22px">AI Animation Lab</h3>
+ <p>Apni anime character image ko short moving clip mein badalne ke liye reference image aur motion prompt taiyar karo. Generation third-party hosted GPU par hoti hai; SHADOW tumhari image ko tab tak upload nahi karta jab tak tum khud external generator par select na karo.</p>
+ <div class="notice">Free demo par queue, daily quota aur availability limits ho sakti hain. Isse 1-hour anime ek click mein generate nahi hoga. Pehle 3–4 second ka test clip banao.</div>
+</div>
+<div class="grid" style="margin-top:16px">
+ <div class="card span6"><h3>1 · Character reference</h3><p class="muted">Apne character ki clear PNG/JPG image select karo. Preview isi browser mein rahega.</p>
+  <div class="field"><label>Choose character image</label><input id="animReference" type="file" accept="image/png,image/jpeg,image/webp"></div>
+  <img id="animReferencePreview" alt="Character reference preview" style="display:none;width:100%;max-height:280px;object-fit:contain;border-radius:12px;background:#090b14">
+ </div>
+ <div class="card span6"><h3>2 · Motion prompt</h3>
+  <div class="field"><label>What should the character do?</label><textarea id="animMotionPrompt" placeholder="Example: The anime hero slowly turns toward the camera, his coat moves in the wind, glowing blue particles float around him. Keep the same face, hairstyle and outfit. Smooth cinematic anime motion."></textarea></div>
+  <div class="actions"><button class="btn small" id="makeAnimPrompt">Create anime motion prompt</button><button class="btn small ghost" id="copyAnimPrompt">Copy prompt</button></div>
+  <p class="muted" id="animPromptStatus" style="font-size:12px">Tip: describe movement and camera motion, not only the character's appearance.</p>
+ </div>
+ <div class="card span12"><h3>3 · Generate a short clip</h3>
+  <p>Open the free Wan 2.2 demo. Wahan same reference image upload karo, prompt paste karo aur short duration select karo. Demo third-party site par chalega.</p>
+  <div class="actions"><a class="btn primary" href="https://igorcsis.github.io/nifty-vid/" target="_blank" rel="noopener">Open free Wan 2.2 Image-to-Video ↗</a><a class="btn ghost" href="https://wan2.video/wan-animate-online" target="_blank" rel="noopener">Open character motion demo ↗</a></div>
+  <p class="muted" style="font-size:12px">NiftyVid public Hugging Face Space use karta hai; free GPU queue/limits apply. Wan Animate demo ko character image ke saath driving video bhi chahiye ho sakta hai. Private photos upload karne se pehle third-party privacy check karna.</p>
+ </div>
+ <div class="card span12"><h3>4 · Preview your generated clip</h3>
+  <p class="muted">Demo se video download karne ke baad yahan select karke preview karo. File abhi sirf tumhare browser mein open hogi.</p>
+  <div class="field"><label>Select generated video</label><input id="animClipFile" type="file" accept="video/mp4,video/webm,video/quicktime"></div>
+  <video id="animClipPreview" class="video" controls playsinline style="display:none"></video>
+  <div class="actions"><button class="btn small ghost" id="clearAnimClip" type="button">Clear preview</button></div>
+ </div>
+</div>
+</section>
 <section class="page" id="guide"><div class="card"><h3>What this version can do</h3><p>SHADOW Anime Studio is the first front-end workspace. It is designed to work on mobile and desktop browsers.</p><ul class="muted"><li>Choose and preview a local video file.</li><li>Write and edit timed subtitle lines; export SRT.</li><li>Save story concepts, scenes and character notes in this browser.</li><li>Preview text-to-speech using voices available on the device.</li></ul><h3 style="margin-top:25px">What needs a future engine</h3><p>Automatic speech recognition, translation, speaker separation, AI dubbing, voice consistency, lip-sync, animation generation and final video rendering need separate models/services and significant processing. A static website alone cannot provide unlimited AI generation for free.</p><p class="muted">Your selected video is previewed locally; this starter does not upload it to a server.</p></div></section>
 <div class="footer">SHADOW ANIME STUDIO · A CREATOR WORKSPACE · YOUR PROJECTS STAY IN THIS BROWSER</div></main></div>
 <script>
-const pages={home:["Your anime universe starts here.","One workspace for dubbing, stories and characters."],dub:["Hindi Dubbing Studio","Prepare dialogue, timing and subtitles for your clip."],story:["Story Creator","Build the world, episode and scenes."],characters:["Character Bible","Create a cast with consistent descriptions."],voices:["Voice Profiles","Preview saved character voices available on your device."],history:["Project History","Review your recent studio activity."],guide:["Studio guide","What works now and what needs an AI engine."]};
+const pages={home:["Your anime universe starts here.","One workspace for dubbing, stories and characters."],dub:["Hindi Dubbing Studio","Prepare dialogue, timing and subtitles for your clip."],story:["Story Creator","Build the world, episode and scenes."],characters:["Character Bible","Create a cast with consistent descriptions."],voices:["Voice Profiles","Preview saved character voices available on your device."],animation:["AI Animation Lab","Prepare character references and generate short anime motion clips."],history:["Project History","Review your recent studio activity."],guide:["Studio guide","What works now and what needs an AI engine."]};
 function go(p){document.querySelectorAll(".page").forEach(x=>x.classList.toggle("active",x.id===p));document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===p));document.getElementById("heading").textContent=pages[p][0];document.getElementById("subheading").textContent=pages[p][1];}
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>go(b.dataset.page));document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
 const $=id=>document.getElementById(id);let lines=[],scenes=[],characters=[],historyItems=[];let voiceGenderMap={};try{voiceGenderMap=JSON.parse(localStorage.getItem("shadowVoiceGenderMap")||"{}")||{}}catch(e){voiceGenderMap={}}
@@ -206,5 +235,43 @@ function stopHindiDub(){if(dubTimer)clearInterval(dubTimer);dubTimer=null;if("sp
 $("stopHindiDub").onclick=()=>{stopHindiDub();$("dubStatus").textContent="Hindi dubbing stopped."};
 $("playHindiDub").onclick=()=>{const v=$("videoPreview");if(!v.src){alert("Pehle video select karo.");return}if(!("speechSynthesis"in window)){alert("Is browser mein speech synthesis supported nahi.");return}if(!lines.some(l=>(l.hindiText||l.text||"").trim())){alert("Pehle Hindi dialogue add/translate karo.");return}stopHindiDub();v.muted=true;v.currentTime=0;v.play().then(()=>{$("dubStatus").textContent="Hindi voice dubbing playback running…";dubTimer=setInterval(()=>{if(v.paused||v.ended){if(v.ended){stopHindiDub();$("dubStatus").textContent="Dubbing playback finished."}return}const ms=v.currentTime*1000;const idx=lines.findIndex((l,i)=>ms>=parseTimeMs(l.start)&&ms<parseTimeMs(l.end)&&i!==lastDubLine&&(l.hindiText||l.text||"").trim());if(idx>=0){lastDubLine=idx;const l=lines[idx];const u=new SpeechSynthesisUtterance(l.hindiText||l.text);u.lang="hi-IN";u.rate=1;const c=characters.find(x=>x.name===l.speaker);const voices=speechSynthesis.getVoices();if(c?.voiceURI){const voice=voices.find(x=>x.voiceURI===c.voiceURI);if(voice)u.voice=voice}if(!u.voice){const hi=voices.find(x=>/^hi(-|$)/i.test(x.lang));if(hi)u.voice=hi}u.onerror=()=>{$("dubStatus").textContent="Voice playback error. Check Hindi voices on Android."};speechSynthesis.speak(u)}},120)}).catch(e=>{$("dubStatus").textContent="Video playback blocked: "+e.message})};
 
+
+// AI Animation Lab: reference and clip previews stay local to this browser.
+let animReferenceUrl=null,animClipUrl=null;
+$("animReference").onchange=e=>{
+ const file=e.target.files&&e.target.files[0]; if(!file)return;
+ if(animReferenceUrl)URL.revokeObjectURL(animReferenceUrl);
+ animReferenceUrl=URL.createObjectURL(file);
+ $("animReferencePreview").src=animReferenceUrl;
+ $("animReferencePreview").style.display="block";
+ $("animPromptStatus").textContent="Reference ready: "+file.name+". Upload it manually to the external generator when you choose.";
+};
+$("makeAnimPrompt").onclick=()=>{
+ const raw=$("animMotionPrompt").value.trim();
+ if(!raw){$("animPromptStatus").textContent="Pehle character ki movement likho.";return;}
+ const prompt=raw+" Maintain the exact same character identity, face, hairstyle, clothing and proportions throughout. Clean 2D anime style, stable line art, smooth natural motion, coherent background, no character redesign, no extra limbs, no text or watermark.";
+ $("animMotionPrompt").value=prompt;
+ $("animPromptStatus").textContent="Prompt enhanced. Copy it and paste it into the Wan 2.2 demo.";
+ logHistory("AI Animation Lab: motion prompt prepared");
+};
+$("copyAnimPrompt").onclick=async()=>{
+ const value=$("animMotionPrompt").value.trim(); if(!value){$("animPromptStatus").textContent="Pehle motion prompt likho.";return;}
+ try{await navigator.clipboard.writeText(value);$("animPromptStatus").textContent="Prompt copied. Ab generator mein paste karo."}
+ catch(e){$("animPromptStatus").textContent="Copy blocked by browser. Prompt ko long-press karke copy karo."}
+};
+$("animClipFile").onchange=e=>{
+ const file=e.target.files&&e.target.files[0];if(!file)return;
+ if(animClipUrl)URL.revokeObjectURL(animClipUrl);
+ animClipUrl=URL.createObjectURL(file);
+ $("animClipPreview").src=animClipUrl;
+ $("animClipPreview").style.display="block";
+ $("animPromptStatus").textContent="Clip loaded locally: "+file.name;
+ logHistory("AI Animation Lab: generated clip previewed - "+file.name);
+};
+$("clearAnimClip").onclick=()=>{
+ $("animClipPreview").pause();$("animClipPreview").removeAttribute("src");$("animClipPreview").load();
+ $("animClipPreview").style.display="none";$("animClipFile").value="";
+ if(animClipUrl)URL.revokeObjectURL(animClipUrl);animClipUrl=null;
+};
 updateStats();
 </script></body></html>
