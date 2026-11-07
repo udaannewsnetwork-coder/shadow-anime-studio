@@ -53,6 +53,19 @@
   <video id="animClipPreview" class="video" controls playsinline style="display:none"></video>
   <div class="actions"><button class="btn small ghost" id="clearAnimClip" type="button">Clear preview</button></div>
  </div>
+
+ <div class="card span12" id="clipEditorCard" style="margin-top:16px">
+  <div class="eyebrow">NEW · MOBILE VIDEO EDITOR</div><h3>5 · Anime Clip Editor & Timeline</h3>
+  <p>Multiple clips add karo, order badlo, trim points set karo, playback speed aur title overlay edit karo. Final export browser ke supported WebM format mein hoga. Is editor ka export silent hai; original clip audio mix abhi supported nahi hai.</p>
+  <div class="field"><label>Add multiple video clips</label><input id="editClipFiles" type="file" accept="video/*" multiple></div>
+  <div id="editTimeline" class="empty">Abhi timeline empty hai. Upar se video clips add karo.</div>
+  <div class="actions" style="margin-top:12px"><button class="btn small ghost" id="saveEditProject">Export edit project JSON</button><button class="btn small primary" id="renderEditVideo">Render edited video (silent WebM)</button><span class="muted" id="editStatus" style="font-size:12px">Ready · Short clips se test karo.</span></div>
+  <video id="editPreviewVideo" playsinline muted style="display:none"></video>
+  <canvas id="editRenderCanvas" width="1280" height="720" style="display:none;width:100%;margin-top:12px;border-radius:12px;background:#05070c"></canvas>
+  <video id="editRenderedPreview" class="video" controls playsinline style="display:none"></video>
+  <div class="actions"><button class="btn small ghost" id="downloadEditedVideo" type="button" disabled>Download edited WebM</button></div>
+  <div class="notice">Editing controls: clip order ↑/↓, trim start/end, speed 0.5×–2×, title overlay, delete. Rendering real-time hoti hai; phone lock ya tab close mat karna. Export mein original audio preserve nahi hota.</div>
+ </div>
 </div>
 </section>
 <section class="page" id="guide"><div class="card"><h3>What this version can do</h3><p>SHADOW Anime Studio is the first front-end workspace. It is designed to work on mobile and desktop browsers.</p><ul class="muted"><li>Choose and preview a local video file.</li><li>Write and edit timed subtitle lines; export SRT.</li><li>Save story concepts, scenes and character notes in this browser.</li><li>Preview text-to-speech using voices available on the device.</li></ul><h3 style="margin-top:25px">What needs a future engine</h3><p>Automatic speech recognition, translation, speaker separation, AI dubbing, voice consistency, lip-sync, animation generation and final video rendering need separate models/services and significant processing. A static website alone cannot provide unlimited AI generation for free.</p><p class="muted">Your selected video is previewed locally; this starter does not upload it to a server.</p></div></section>
@@ -273,5 +286,98 @@ $("clearAnimClip").onclick=()=>{
  $("animClipPreview").style.display="none";$("animClipFile").value="";
  if(animClipUrl)URL.revokeObjectURL(animClipUrl);animClipUrl=null;
 };
+
+// Mobile timeline editor: sequential canvas render, silent WebM output.
+let editClips=[], editOutputUrl=null;
+const editInput=$("editClipFiles");
+editInput.addEventListener("change",async e=>{
+ const files=Array.from(e.target.files||[]);
+ for(const file of files){
+  const url=URL.createObjectURL(file), probe=document.createElement("video");
+  probe.preload="metadata";probe.src=url;
+  await new Promise(resolve=>{probe.onloadedmetadata=resolve;probe.onerror=resolve});
+  if(!Number.isFinite(probe.duration)||probe.duration<=0){URL.revokeObjectURL(url);continue}
+  editClips.push({fileName:file.name,file,url,duration:probe.duration,start:0,end:probe.duration,speed:1,title:""});
+ }
+ editInput.value="";drawEditTimeline();
+});
+function drawEditTimeline(){
+ const root=$("editTimeline");root.innerHTML="";
+ if(!editClips.length){root.className="empty";root.textContent="Abhi timeline empty hai. Upar se video clips add karo.";return}
+ root.className="";
+ editClips.forEach((clip,i)=>{
+  const card=document.createElement("div");card.className="scene";
+  const head=document.createElement("strong");head.textContent=(i+1)+". "+clip.fileName;card.appendChild(head);
+  const fields=document.createElement("div");fields.className="grid";
+  const makeField=(label,value,type,step,min,max,cb)=>{
+   const wrap=document.createElement("div");wrap.className="span4";
+   const lab=document.createElement("label");lab.textContent=label;lab.style.cssText="display:block;color:#aeb8ce;font-size:12px;margin:8px 0 5px";
+   const inp=document.createElement("input");inp.type=type;inp.value=value;inp.step=step||"any";if(min!==null)inp.min=min;if(max!==null)inp.max=max;inp.style.cssText="width:100%;background:#0b101c;color:white;border:1px solid #303a52;border-radius:8px;padding:9px";
+   inp.onchange=()=>{cb(inp.value);drawEditTimeline()};wrap.append(lab,inp);fields.appendChild(wrap);
+  };
+  makeField("Trim start (seconds)",clip.start,"number",0.1,0,clip.duration,v=>clip.start=Math.max(0,Math.min(Number(v)||0,clip.end-0.1)));
+  makeField("Trim end (seconds)",clip.end,"number",0.1,clip.start+0.1,clip.duration,v=>clip.end=Math.max(clip.start+0.1,Math.min(Number(v)||clip.duration,clip.duration)));
+  const speedWrap=document.createElement("div");speedWrap.className="span4";const lab=document.createElement("label");lab.textContent="Playback speed";lab.style.cssText="display:block;color:#aeb8ce;font-size:12px;margin:8px 0 5px";const sel=document.createElement("select");sel.style.cssText="width:100%;background:#0b101c;color:white;border:1px solid #303a52;border-radius:8px;padding:9px";[0.5,0.75,1,1.25,1.5,2].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v+"×";sel.appendChild(o)});sel.value=clip.speed;sel.onchange=()=>clip.speed=Number(sel.value);speedWrap.append(lab,sel);fields.appendChild(speedWrap);
+  card.appendChild(fields);
+  const title=document.createElement("input");title.value=clip.title;title.placeholder="Optional title overlay for this clip";title.style.cssText="width:100%;margin-top:9px;background:#0b101c;color:white;border:1px solid #303a52;border-radius:8px;padding:10px";title.onchange=()=>clip.title=title.value;card.appendChild(title);
+  const actions=document.createElement("div");actions.className="actions";actions.style.marginTop="9px";
+  [["↑",()=>{if(i>0){[editClips[i-1],editClips[i]]=[editClips[i],editClips[i-1]];drawEditTimeline()}}],["↓",()=>{if(i<editClips.length-1){[editClips[i+1],editClips[i]]=[editClips[i],editClips[i+1]];drawEditTimeline()}}],["Delete",()=>{URL.revokeObjectURL(clip.url);editClips.splice(i,1);drawEditTimeline()}]].forEach(([label,fn])=>{const b=document.createElement("button");b.className="btn small ghost";b.textContent=label;b.onclick=fn;actions.appendChild(b)});card.appendChild(actions);root.appendChild(card);
+ });
+}
+$("saveEditProject").onclick=()=>{
+ if(!editClips.length){alert("Pehle clips add karo.");return}
+ const data={app:"SHADOW Anime Studio",type:"Video edit timeline",createdAt:new Date().toISOString(),clips:editClips.map(c=>({fileName:c.fileName,start:c.start,end:c.end,speed:c.speed,title:c.title}))};
+ download(JSON.stringify(data,null,2),"shadow-edit-project.json","application/json");
+ logHistory("Video edit project settings exported");
+};
+$("renderEditVideo").onclick=async()=>{
+ const status=$("editStatus"),btn=$("renderEditVideo");
+ if(!editClips.length){alert("Pehle timeline mein video clips add karo.");return}
+ if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream){status.textContent="Is browser mein WebM render supported nahi.";return}
+ if(editClips.some(c=>c.end<=c.start)){alert("Har clip ka trim end, start se aage hona chahiye.");return}
+ btn.disabled=true;$("downloadEditedVideo").disabled=true;status.textContent="Rendering started… phone ko active rakho.";
+ const canvas=$("editRenderCanvas"),ctx=canvas.getContext("2d"),video=$("editPreviewVideo");
+ canvas.style.display="block";canvas.scrollIntoView({behavior:"smooth",block:"center"});
+ const stream=canvas.captureStream(24);let recorder;
+ try{
+  const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
+  if(!mime)throw new Error("WebM encoder is not available in this browser.");
+  const chunks=[];recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4500000});
+  recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+  const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error("Recorder failed"))});
+  recorder.start(500);
+  for(let i=0;i<editClips.length;i++){
+   const c=editClips[i];video.pause();video.src=c.url;video.load();
+   await new Promise((resolve,reject)=>{video.onloadedmetadata=resolve;video.onerror=()=>reject(new Error("Could not open "+c.fileName))});
+   video.currentTime=c.start;
+   await new Promise(resolve=>{video.onseeked=resolve});
+   video.playbackRate=c.speed;
+   await video.play();
+   status.textContent="Rendering clip "+(i+1)+" / "+editClips.length;
+   await new Promise((resolve,reject)=>{
+    let raf=0,done=false;
+    const finish=()=>{if(done)return;done=true;cancelAnimationFrame(raf);video.pause();resolve()};
+    const frame=()=>{
+     ctx.fillStyle="#080b14";ctx.fillRect(0,0,canvas.width,canvas.height);
+     const scale=Math.max(canvas.width/video.videoWidth,canvas.height/video.videoHeight);
+     const w=video.videoWidth*scale,h=video.videoHeight*scale;
+     ctx.drawImage(video,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
+     if(c.title){ctx.fillStyle="rgba(0,0,0,.58)";ctx.fillRect(0,canvas.height-112,canvas.width,112);ctx.fillStyle="#fff";ctx.font="bold 42px system-ui";ctx.textAlign="center";ctx.fillText(c.title,canvas.width/2,canvas.height-48,canvas.width-80)}
+     if(video.currentTime>=c.end||video.ended){finish();return}
+     raf=requestAnimationFrame(frame);
+    };video.onended=finish;video.onerror=()=>reject(new Error("Playback failed for "+c.fileName));raf=requestAnimationFrame(frame);
+   });
+  }
+  recorder.stop();await stopped;
+  if(editOutputUrl)URL.revokeObjectURL(editOutputUrl);
+  editOutputUrl=URL.createObjectURL(new Blob(chunks,{type:mime}));
+  $("editRenderedPreview").src=editOutputUrl;$("editRenderedPreview").style.display="block";
+  $("downloadEditedVideo").disabled=false;status.textContent="Render complete · "+(chunks.reduce((n,c)=>n+c.size,0)/1048576).toFixed(1)+" MB WebM";
+  logHistory("Edited video rendered: "+editClips.length+" clips (silent WebM)");
+ }catch(err){if(recorder&&recorder.state!=="inactive")recorder.stop();status.textContent="Render failed: "+err.message;alert("Video render nahi ho paya: "+err.message)}
+ finally{stream.getTracks().forEach(t=>t.stop());video.pause();btn.disabled=false}
+};
+$("downloadEditedVideo").onclick=()=>{if(editOutputUrl)download(editOutputUrl,"shadow-edited-anime.webm","video/webm")};
+
 updateStats();
 </script></body></html>
