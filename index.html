@@ -86,7 +86,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <button class="nav" data-page="dub"><b>♫</b><span>Anime Dubbing</span></button>
 <button class="nav" data-page="story"><b>✦</b><span>Story Creator</span></button>
 <button class="nav" data-page="characters"><b>♙</b><span>Characters</span></button>
-<button class="nav" data-page="voices"><b>◉</b><span>Voice Profiles</span></button><button class="nav" data-page="animation"><b>▶</b><span>AI Animation Lab</span></button><button class="nav" data-page="history"><b>▤</b><span>History</span></button>
+<button class="nav" data-page="voices"><b>◉</b><span>Voice Profiles</span></button><button class="nav" data-page="animation"><b>▶</b><span>AI Animation Lab</span></button><button class="nav" data-page="ai-engine"><b>✧</b><span>AI Engine</span></button><button class="nav" data-page="history"><b>▤</b><span>History</span></button>
 <button class="nav" data-page="watchlist"><b>♡</b><span>My Watchlist</span></button>
 <div class="navlabel">PROJECT</div><button class="nav" data-page="guide"><b>⌘</b><span>How it works</span></button>
 <div class="sidefoot">SHADOW STUDIO · BUILD 01<br>Creative workspace</div></aside>
@@ -177,6 +177,17 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 </div>
 </section>
 <section class="page" id="guide"><div class="card"><h3>What this version can do</h3><p>SHADOW Anime Studio is the first front-end workspace. It is designed to work on mobile and desktop browsers.</p><ul class="muted"><li>Choose and preview a local video file.</li><li>Write and edit timed subtitle lines; export SRT.</li><li>Save story concepts, scenes and character notes in this browser.</li><li>Preview text-to-speech using voices available on the device.</li></ul><h3 style="margin-top:25px">What needs a future engine</h3><p>Automatic speech recognition, translation, speaker separation, AI dubbing, voice consistency, lip-sync, animation generation and final video rendering need separate models/services and significant processing. A static website alone cannot provide unlimited AI generation for free.</p><p class="muted">Your selected video is previewed locally; this starter does not upload it to a server.</p></div></section>
+<section class="page" id="ai-engine">
+ <div class="sectionHeading"><div><div class="eyebrow">CLOUDFLARE WORKERS AI</div><h2>AI Production Engine</h2><p>Real model-backed tools for story writing, anime concept art, Hindi dialogue and speech processing.</p></div><span id="aiStatus" class="badge">Checking engine…</span></div>
+ <div class="notice" style="margin-bottom:18px">Cloud AI notice: prompts, dialogue and audio you submit here are sent to Cloudflare Workers AI for processing. The free allocation is limited and resets daily. AI-generated images are concept art, not finished animation.</div>
+ <div class="grid">
+  <div class="card span6"><h3>✦ AI Story Writer</h3><p>Generate an original episode package using a hosted language model.</p><label>Story idea</label><textarea id="aiStoryIdea" rows="5" placeholder="A quiet student discovers that forgotten memories become living spirits…"></textarea><div class="row"><div><label>Genre</label><select id="aiStoryGenre"><option>Fantasy</option><option>Action</option><option>Romance</option><option>Science fiction</option><option>Horror</option><option>Adventure</option></select></div><div><label>Language</label><select id="aiStoryLanguage"><option>Hindi</option><option>English</option><option>Hinglish</option></select></div></div><button class="btn primary" id="aiStoryRun">Generate with AI</button><pre id="aiStoryResult" class="aiResult">Your generated episode will appear here.</pre></div>
+  <div class="card span6"><h3>✧ Anime Concept Image</h3><p>Generate a real AI image from a text prompt. Save it to your device if you want to keep it.</p><label>Visual prompt</label><textarea id="aiImagePrompt" rows="5" placeholder="Anime key visual, young hero in a rain-soaked neon city, cinematic lighting, detailed background…"></textarea><button class="btn primary" id="aiImageRun">Generate concept image</button><div id="aiImageStatus" class="muted" style="margin:12px 0">Ready when you are.</div><img id="aiImageOutput" alt="AI generated anime concept" style="display:none;width:100%;border-radius:14px;border:1px solid var(--line)"></div>
+  <div class="card span6"><h3>♫ Speech-to-Text</h3><p>Upload an audio clip and get a transcript with the hosted Whisper model. Maximum 18 MB per request.</p><input type="file" id="aiAudioFile" accept="audio/*"><button class="btn primary" id="aiTranscribeRun">Transcribe audio</button><textarea id="aiTranscript" rows="5" placeholder="Transcription will appear here…"></textarea><button class="btn ghost" id="aiUseTranscript">Use transcript for Hindi translation</button></div>
+  <div class="card span6"><h3>अ Hindi Dialogue & Voice</h3><p>Translate dialogue into natural spoken Hindi, then create an MP3 voice preview.</p><label>Dialogue</label><textarea id="aiDubText" rows="4" placeholder="Paste original dialogue here…"></textarea><div class="actions"><button class="btn ghost" id="aiTranslateRun">Translate to Hindi</button><button class="btn primary" id="aiTtsRun">Generate Hindi voice</button></div><audio id="aiTtsAudio" controls style="width:100%;margin-top:14px;display:none"></audio><div id="aiDubStatus" class="muted"></div></div>
+  <div class="card span12"><h3>☁ Cloud Project Sync</h3><p>Save your current story, scenes, characters and subtitle data to the connected D1 database. This does not upload video or audio files yet.</p><button class="btn primary" id="aiCloudSave">Save workspace to cloud</button><button class="btn ghost" id="aiCloudLoad">Load latest cloud projects</button><div id="aiCloudStatus" class="muted" style="margin-top:12px">Cloud project database is connected; media storage needs R2 activation.</div><div id="aiCloudList"></div></div>
+ </div>
+</section>
 <div class="footer">SHADOW ANIME STUDIO · A CREATOR WORKSPACE · YOUR PROJECTS STAY IN THIS BROWSER</div></main></div>
 <div class="detailOverlay" id="workflowDetail" role="dialog" aria-modal="true" aria-labelledby="detailTitle"><div class="detailPanel"><button class="detailClose" id="detailClose" aria-label="Close details">×</button><div class="eyebrow">SHADOW WORKFLOW</div><h2 id="detailTitle">Workflow</h2><p id="detailDescription"></p><div class="detailActions"><button class="btn primary" id="detailOpen">Open workflow ↗</button><button class="btn ghost" id="detailFavorite">♡ Save to watchlist</button></div><small class="muted">Your bookmarks are stored in this browser on this device.</small></div></div>
 <div class="onboardOverlay" id="onboardOverlay" role="dialog" aria-modal="true" aria-labelledby="onboardTitle">
@@ -693,4 +704,70 @@ $("renderEditVideo").onclick=async()=>{
 $("downloadEditedVideo").onclick=()=>{if(editOutputUrl)download(editOutputUrl,"shadow-edited-anime.webm","video/webm")};
 
 updateStats();
+
+// SHADOW cloud AI engine integration
+(function(){
+ const el=id=>document.getElementById(id);
+ const api=async(path,options={})=>{
+  const response=await fetch(path,options);
+  const type=response.headers.get("content-type")||"";
+  if(type.includes("application/json")){const data=await response.json();if(!response.ok||data.ok===false)throw new Error(data.error||"Request failed");return data}
+  if(!response.ok)throw new Error(await response.text()||"Request failed");
+  return response;
+ };
+ const status=el("aiStatus");
+ async function check(){
+  try{const h=await api("/api/health");status.textContent=h.engines.text?"AI engine online":"AI engine unavailable";status.style.color="#55d9e8";}
+  catch(e){status.textContent="Backend not deployed";status.style.color="#ff9b9b";}
+ }
+ const setBusy=(button,busy,label)=>{button.disabled=busy;if(busy)button.dataset.old=button.textContent;button.textContent=busy?label:(button.dataset.old||button.textContent)};
+ async function run(button,label,fn){setBusy(button,true,label);try{await fn()}catch(e){alert(e.message||"Something went wrong")}finally{setBusy(button,false)}}
+ el("aiStoryRun").onclick=()=>run(el("aiStoryRun"),"Writing episode…",async()=>{
+  const idea=el("aiStoryIdea").value.trim();if(!idea)throw new Error("Pehle story idea likho.");
+  const r=await api("/api/story",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({idea,genre:el("aiStoryGenre").value,language:el("aiStoryLanguage").value})});
+  el("aiStoryResult").textContent=r.content||"No story returned.";
+ });
+ el("aiImageRun").onclick=()=>run(el("aiImageRun"),"Generating image…",async()=>{
+  const prompt=el("aiImagePrompt").value.trim();if(!prompt)throw new Error("Image prompt likho.");
+  el("aiImageStatus").textContent="Generating on Cloudflare Workers AI…";
+  const r=await api("/api/image",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prompt})});
+  el("aiImageOutput").src=r.dataUrl;el("aiImageOutput").style.display="block";el("aiImageStatus").textContent="Generated with "+r.model;
+ });
+ el("aiTranscribeRun").onclick=()=>run(el("aiTranscribeRun"),"Transcribing…",async()=>{
+  const file=el("aiAudioFile").files[0];if(!file)throw new Error("Audio file choose karo.");
+  if(file.size>18*1024*1024)throw new Error("Audio file 18 MB se chhoti honi chahiye.");
+  const r=await api("/api/transcribe",{method:"POST",headers:{"content-type":file.type||"application/octet-stream"},body:file});
+  el("aiTranscript").value=r.text||"No speech detected.";
+ });
+ el("aiUseTranscript").onclick=()=>{el("aiDubText").value=el("aiTranscript").value};
+ el("aiTranslateRun").onclick=()=>run(el("aiTranslateRun"),"Translating…",async()=>{
+  const r=await api("/api/translate",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text:el("aiDubText").value})});
+  el("aiDubText").value=r.translation||"";
+  el("aiDubStatus").textContent="Translated with "+r.model;
+ });
+ el("aiTtsRun").onclick=()=>run(el("aiTtsRun"),"Generating voice…",async()=>{
+  const response=await fetch("/api/tts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({text:el("aiDubText").value,lang:"hi"})});
+  if(!response.ok){const d=await response.json().catch(()=>({}));throw new Error(d.error||"Voice generation failed")}
+  const blob=await response.blob();const audio=el("aiTtsAudio");if(audio.dataset.url)URL.revokeObjectURL(audio.dataset.url);
+  audio.dataset.url=URL.createObjectURL(blob);audio.src=audio.dataset.url;audio.style.display="block";audio.load();el("aiDubStatus").textContent="Hindi voice generated. Preview below.";
+ });
+ function workspaceKey(){
+  let k=localStorage.getItem("shadowCloudWorkspaceKey");
+  if(!k){const bytes=crypto.getRandomValues(new Uint8Array(24));k=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");localStorage.setItem("shadowCloudWorkspaceKey",k)}
+  return k;
+ }
+ const cloudHeaders=()=>({"content-type":"application/json","X-Workspace-Key":workspaceKey()});
+ el("aiCloudSave").onclick=()=>run(el("aiCloudSave"),"Saving…",async()=>{
+  const data={lines:window.lines||[],scenes:window.scenes||[],characters:window.characters||[],historyItems:window.historyItems||[]};
+  const r=await api("/api/projects",{method:"POST",headers:cloudHeaders(),body:JSON.stringify({title:"SHADOW Anime Workspace",data})});
+  el("aiCloudStatus").textContent="Saved to Cloudflare D1 · "+r.updated_at;
+ });
+ el("aiCloudLoad").onclick=()=>run(el("aiCloudLoad"),"Loading…",async()=>{
+  const r=await api("/api/projects",{headers:{"X-Workspace-Key":workspaceKey()}});
+  const list=el("aiCloudList");list.textContent=r.projects.length?r.projects.map(p=>p.title+" · "+p.updated_at).join("\n"):"No cloud projects saved yet.";
+  list.style.whiteSpace="pre-wrap";
+ });
+ check();
+})();
+
 </script></body></html>
