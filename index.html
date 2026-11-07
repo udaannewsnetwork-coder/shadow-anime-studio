@@ -746,7 +746,7 @@ updateStats();
     if(!media.captureStream&&!media.mozCaptureStream)throw new Error("Is Chrome version mein audio chunk capture supported nahi.");
     const total=Math.ceil(media.duration/60),signature=["audio",file.name,file.size,file.lastModified].join("|");
     let state=readLongDubState(signature);state.totalChunks=total;
-    if(state.nextChunk>=total){state.nextChunk=0;state.signature=signature;saveLongDubState(state)}
+    if(state.nextChunk>=total){state.nextChunk=0;state.transcript="";state.signature=signature;saveLongDubState(state)}
     const asr=await getLocalWhisper(t=>status.textContent=t);
     const lang=el("aiSourceLang")?.value||"";
     let transcriptParts=String(state.transcript||"").split("\n").filter(Boolean);
