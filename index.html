@@ -386,20 +386,32 @@ $("renderEditVideo").onclick=async()=>{
  if(!editClips.length){alert("Pehle timeline mein video clips add karo.");return}
  if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream){status.textContent="Is browser mein WebM render supported nahi.";return}
  if(editClips.some(c=>c.end<=c.start)){alert("Har clip ka trim end, start se aage hona chahiye.");return}
- btn.disabled=true;$("downloadEditedVideo").disabled=true;status.textContent="Rendering started… phone ko active rakho.";
+ btn.disabled=true;$("downloadEditedVideo").disabled=true;status.textContent="Preparing video and audio tracks…";
  const canvas=$("editRenderCanvas"),ctx=canvas.getContext("2d"),video=$("editPreviewVideo");
  canvas.style.display="block";canvas.scrollIntoView({behavior:"smooth",block:"center"});
  const videoStream=canvas.captureStream(24);let recorder,audioCtx=null,audioDestination=null;
  try{
   const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
   if(!mime)throw new Error("WebM encoder is not available in this browser.");
+  // Prepare the first frame before starting the recorder so audio and video begin together.
+  const first=editClips[0];video.pause();video.src=first.url;video.load();
+  await new Promise((resolve,reject)=>{video.onloadedmetadata=resolve;video.onerror=()=>reject(new Error("Could not open "+first.fileName))});
+  video.currentTime=first.start;await new Promise(resolve=>{video.onseeked=resolve});
+  let decoded=[];
   if(editAudioTracks.length){
    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
    if(!AudioContextClass)throw new Error("Web Audio is not supported in this browser.");
    audioCtx=new AudioContextClass();audioDestination=audioCtx.createMediaStreamDestination();await audioCtx.resume();
+   decoded=await Promise.all(editAudioTracks.map(async track=>({track,buffer:await audioCtx.decodeAudioData((await track.file.arrayBuffer()).slice(0))})));
+  }
+  const mixedStream=new MediaStream([...videoStream.getVideoTracks(),...(audioDestination?audioDestination.stream.getAudioTracks():[])]);
+  const chunks=[];recorder=new MediaRecorder(mixedStream,{mimeType:mime,videoBitsPerSecond:4500000});
+  recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+  const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error("Recorder failed"))});
+  recorder.start(500);
+  if(audioCtx&&audioDestination){
    const totalDuration=editClips.reduce((sum,c)=>sum+(c.end-c.start)/c.speed,0);
-   const decoded=await Promise.all(editAudioTracks.map(async track=>({track,buffer:await audioCtx.decodeAudioData((await track.file.arrayBuffer()).slice(0))})));
-   const audioStartTime=audioCtx.currentTime+0.08;
+   const audioStartTime=audioCtx.currentTime+0.12;
    decoded.forEach(({track,buffer})=>{
     if(track.trimEnd<=track.trimStart)return;
     const source=audioCtx.createBufferSource(),gain=audioCtx.createGain();source.buffer=buffer;source.connect(gain);gain.connect(audioDestination);
@@ -412,41 +424,46 @@ $("renderEditVideo").onclick=async()=>{
     source.start(startAt,track.trimStart,playDuration);
    });
   }
-  const mixedStream=new MediaStream([...videoStream.getVideoTracks(),...(audioDestination?audioDestination.stream.getAudioTracks():[])]);
-  const chunks=[];recorder=new MediaRecorder(mixedStream,{mimeType:mime,videoBitsPerSecond:4500000});
-  recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
-  const stopped=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=()=>reject(new Error("Recorder failed"))});
-  recorder.start(500);
   for(let i=0;i<editClips.length;i++){
-   const c=editClips[i];video.pause();video.src=c.url;video.load();
-   await new Promise((resolve,reject)=>{video.onloadedmetadata=resolve;video.onerror=()=>reject(new Error("Could not open "+c.fileName))});
-   video.currentTime=c.start;
-   await new Promise(resolve=>{video.onseeked=resolve});
+   const c=editClips[i];
+   if(i>0){
+    video.pause();video.src=c.url;video.load();
+    await new Promise((resolve,reject)=>{video.onloadedmetadata=resolve;video.onerror=()=>reject(new Error("Could not open "+c.fileName))});
+    video.currentTime=c.start;await new Promise(resolve=>{video.onseeked=resolve});
+   }
    video.playbackRate=c.speed;
-   await video.play();
    status.textContent="Rendering clip "+(i+1)+" / "+editClips.length;
+   await video.play();
    await new Promise((resolve,reject)=>{
     let raf=0,done=false;
     const finish=()=>{if(done)return;done=true;cancelAnimationFrame(raf);video.pause();resolve()};
     const frame=()=>{
      ctx.fillStyle="#080b14";ctx.fillRect(0,0,canvas.width,canvas.height);
-     const scale=Math.max(canvas.width/video.videoWidth,canvas.height/video.videoHeight);
-     const w=video.videoWidth*scale,h=video.videoHeight*scale;
+     const scale=Math.max(canvas.width/video.videoWidth,canvas.height/video.videoHeight),w=video.videoWidth*scale,h=video.videoHeight*scale;
      ctx.drawImage(video,(canvas.width-w)/2,(canvas.height-h)/2,w,h);
      if(c.title){ctx.fillStyle="rgba(0,0,0,.58)";ctx.fillRect(0,canvas.height-112,canvas.width,112);ctx.fillStyle="#fff";ctx.font="bold 42px system-ui";ctx.textAlign="center";ctx.fillText(c.title,canvas.width/2,canvas.height-48,canvas.width-80)}
      if(video.currentTime>=c.end||video.ended){finish();return}
      raf=requestAnimationFrame(frame);
-    };video.onended=finish;video.onerror=()=>reject(new Error("Playback failed for "+c.fileName));raf=requestAnimationFrame(frame);
+    };
+    video.onended=finish;video.onerror=()=>reject(new Error("Playback failed for "+c.fileName));raf=requestAnimationFrame(frame);
    });
   }
   recorder.stop();await stopped;
   if(editOutputUrl)URL.revokeObjectURL(editOutputUrl);
   editOutputUrl=URL.createObjectURL(new Blob(chunks,{type:mime}));
   $("editRenderedPreview").src=editOutputUrl;$("editRenderedPreview").style.display="block";
-  $("downloadEditedVideo").disabled=false;status.textContent="Render complete · "+(chunks.reduce((n,c)=>n+c.size,0)/1048576).toFixed(1)+" MB WebM · "+editAudioTracks.length+" audio tracks mixed";
+  $("downloadEditedVideo").disabled=false;
+  status.textContent="Render complete · "+(chunks.reduce((n,c)=>n+c.size,0)/1048576).toFixed(1)+" MB WebM · "+editAudioTracks.length+" audio tracks mixed";
   logHistory("Edited video rendered: "+editClips.length+" video clips + "+editAudioTracks.length+" audio tracks (WebM mix)");
- }catch(err){if(recorder&&recorder.state!=="inactive")recorder.stop();status.textContent="Render failed: "+err.message;alert("Video render nahi ho paya: "+err.message)}
- finally{videoStream.getTracks().forEach(t=>t.stop());if(audioDestination)audioDestination.stream.getTracks().forEach(t=>t.stop());if(audioCtx)await audioCtx.close().catch(()=>{});video.pause();btn.disabled=false}
+ }catch(err){
+  if(recorder&&recorder.state!=="inactive")recorder.stop();
+  status.textContent="Render failed: "+err.message;alert("Video render nahi ho paya: "+err.message);
+ }finally{
+  videoStream.getTracks().forEach(t=>t.stop());
+  if(audioDestination)audioDestination.stream.getTracks().forEach(t=>t.stop());
+  if(audioCtx)await audioCtx.close().catch(()=>{});
+  video.pause();btn.disabled=false;
+ }
 };
 $("downloadEditedVideo").onclick=()=>{if(editOutputUrl)download(editOutputUrl,"shadow-edited-anime.webm","video/webm")};
 
