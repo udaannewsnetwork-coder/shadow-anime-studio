@@ -749,7 +749,7 @@ updateStats();
     if(state.nextChunk>=total){state.nextChunk=0;state.signature=signature;saveLongDubState(state)}
     const asr=await getLocalWhisper(t=>status.textContent=t);
     const lang=el("aiSourceLang")?.value||"";
-    let transcriptParts=[];
+    let transcriptParts=String(state.transcript||"").split("\n").filter(Boolean);
     for(let i=state.nextChunk;i<total;i++){
      status.textContent="Local transcription · chunk "+(i+1)+" / "+total;
      const start=i*60,duration=Math.min(60,media.duration-start);
