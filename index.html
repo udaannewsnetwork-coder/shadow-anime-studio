@@ -183,7 +183,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
  <div class="grid">
   <div class="card span6"><h3>✦ AI Story Writer</h3><p>Generate an original episode package using a hosted language model.</p><label>Story idea</label><textarea id="aiStoryIdea" rows="5" placeholder="A quiet student discovers that forgotten memories become living spirits…"></textarea><div class="row"><div><label>Genre</label><select id="aiStoryGenre"><option>Fantasy</option><option>Action</option><option>Romance</option><option>Science fiction</option><option>Horror</option><option>Adventure</option></select></div><div><label>Language</label><select id="aiStoryLanguage"><option>Hindi</option><option>English</option><option>Hinglish</option></select></div></div><button class="btn primary" id="aiStoryRun">Generate with AI</button><pre id="aiStoryResult" class="aiResult">Your generated episode will appear here.</pre></div>
   <div class="card span6"><h3>✧ Anime Concept Image</h3><p>Generate a real AI image from a text prompt. Save it to your device if you want to keep it.</p><label>Visual prompt</label><textarea id="aiImagePrompt" rows="5" placeholder="Anime key visual, young hero in a rain-soaked neon city, cinematic lighting, detailed background…"></textarea><button class="btn primary" id="aiImageRun">Generate concept image</button><div id="aiImageStatus" class="muted" style="margin:12px 0">Ready when you are.</div><img id="aiImageOutput" alt="AI generated anime concept" style="display:none;width:100%;border-radius:14px;border:1px solid var(--line)"></div>
-  <div class="card span6"><h3>♫ Speech-to-Text</h3><p>Upload an audio clip and get a transcript with the hosted Whisper model. Maximum 18 MB per request.</p><div class="field" style="margin:12px 0"><label for="aiAudioFile">Choose audio from phone</label><input type="file" id="aiAudioFile" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac,.webm" aria-label="Choose audio file" style="display:block;width:100%;max-width:100%;min-height:54px;padding:12px;border:1px solid #65708b;border-radius:12px;background:#171d2d;color:#fff;font-size:15px;opacity:1;position:static;pointer-events:auto"><div id="aiAudioFileStatus" class="muted" style="font-size:12px;margin-top:8px">No audio selected · Max 18 MB</div></div><button class="btn primary" id="aiTranscribeRun" type="button">Transcribe audio</button><textarea id="aiTranscript" rows="5" placeholder="Transcription will appear here…"></textarea><button class="btn ghost" id="aiUseTranscript">Use transcript for Hindi translation</button></div>
+  <div class="card span6"><h3>♫ Speech-to-Text</h3><p>Upload audio up to 500 MB. Files over 18 MB are processed locally in 60-second chunks; smaller files use the hosted Whisper model.</p><div class="field" style="margin:12px 0"><label for="aiAudioFile">Choose audio from phone</label><input type="file" id="aiAudioFile" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac,.webm" aria-label="Choose audio file" style="display:block;width:100%;max-width:100%;min-height:54px;padding:12px;border:1px solid #65708b;border-radius:12px;background:#171d2d;color:#fff;font-size:15px;opacity:1;position:static;pointer-events:auto"><div id="aiAudioFileStatus" class="muted" style="font-size:12px;margin-top:8px">No audio selected · Max 500 MB</div></div><button class="btn primary" id="aiTranscribeRun" type="button">Transcribe audio</button><textarea id="aiTranscript" rows="5" placeholder="Transcription will appear here…"></textarea><button class="btn ghost" id="aiUseTranscript">Use transcript for Hindi translation</button></div>
   <div class="card span6"><h3>अ Hindi Dialogue & Voice</h3><p>Translate dialogue into natural spoken Hindi, then create an MP3 voice preview.</p><label>Dialogue</label><textarea id="aiDubText" rows="4" placeholder="Paste original dialogue here…"></textarea><div class="actions"><button class="btn ghost" id="aiTranslateRun">Translate to Hindi</button><button class="btn primary" id="aiTtsRun">Generate Hindi voice</button></div><audio id="aiTtsAudio" controls style="width:100%;margin-top:14px;display:none"></audio><div id="aiDubStatus" class="muted"></div></div>
   <div class="card span12"><h3>☁ Cloud Project Sync</h3><p>Save your current story, scenes, characters and subtitle data to the connected D1 database. This does not upload video or audio files yet.</p><button class="btn primary" id="aiCloudSave">Save workspace to cloud</button><button class="btn ghost" id="aiCloudLoad">Load latest cloud projects</button><div id="aiCloudStatus" class="muted" style="margin-top:12px">Cloud project database is connected; media storage needs R2 activation.</div><div id="aiCloudList"></div></div>
  </div>
@@ -733,12 +733,46 @@ updateStats();
   const r=await api("/api/image",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prompt})});
   el("aiImageOutput").src=r.dataUrl;el("aiImageOutput").style.display="block";el("aiImageStatus").textContent="Generated with "+r.model;
  });
- el("aiAudioFile").addEventListener("change",()=>{const f=el("aiAudioFile").files&&el("aiAudioFile").files[0];el("aiAudioFileStatus").textContent=f?("Selected: "+f.name+" · "+(f.size/1048576).toFixed(1)+" MB"):"No audio selected";});
+ el("aiAudioFile").addEventListener("change",()=>{const f=el("aiAudioFile").files&&el("aiAudioFile").files[0];el("aiAudioFileStatus").textContent=f?("Selected: "+f.name+" · "+(f.size/1048576).toFixed(1)+" MB"+(f.size>18*1048576?" · Local chunk mode":" · Hosted mode")):"No audio selected · Max 500 MB";});
  el("aiTranscribeRun").onclick=()=>run(el("aiTranscribeRun"),"Transcribing…",async()=>{
   const file=el("aiAudioFile").files[0];if(!file)throw new Error("Audio file choose karo.");
-  if(file.size>18*1024*1024)throw new Error("Audio file 18 MB se chhoti honi chahiye.");
-  const r=await api("/api/transcribe",{method:"POST",headers:{"content-type":file.type||"application/octet-stream"},body:file});
-  el("aiTranscript").value=r.text||"No speech detected.";
+  if(file.size>500*1024*1024)throw new Error("Audio file 500 MB se chhoti honi chahiye.");
+  if(file.size>18*1024*1024){
+   const status=el("aiAudioFileStatus");status.textContent="Preparing local Whisper model…";
+   const media=new Audio(),mediaUrl=URL.createObjectURL(file);media.preload="metadata";media.src=mediaUrl;
+   try{
+    await new Promise((resolve,reject)=>{media.onloadedmetadata=resolve;media.onerror=()=>reject(new Error("Audio file open nahi hui. MP3, WAV, M4A ya WebM try karo."))});
+    if(!Number.isFinite(media.duration)||media.duration<=0)throw new Error("Audio duration read nahi ho rahi.");
+    if(!media.captureStream&&!media.mozCaptureStream)throw new Error("Is Chrome version mein audio chunk capture supported nahi.");
+    const total=Math.ceil(media.duration/60),signature=["audio",file.name,file.size,file.lastModified].join("|");
+    let state=readLongDubState(signature);state.totalChunks=total;
+    if(state.nextChunk>=total){state.nextChunk=0;state.signature=signature;saveLongDubState(state)}
+    const asr=await getLocalWhisper(t=>status.textContent=t);
+    const lang=el("aiSourceLang")?.value||"";
+    let transcriptParts=[];
+    for(let i=state.nextChunk;i<total;i++){
+     status.textContent="Local transcription · chunk "+(i+1)+" / "+total;
+     const start=i*60,duration=Math.min(60,media.duration-start);
+     const blob=await captureVideoAudioChunk(media,start,duration,()=>{});
+     const audioCtx=new (window.AudioContext||window.webkitAudioContext)();let decoded;
+     try{decoded=await audioCtx.decodeAudioData(await blob.arrayBuffer())}finally{await audioCtx.close()}
+     const offline=new OfflineAudioContext(1,Math.ceil(decoded.duration*16000),16000),source=offline.createBufferSource();
+     source.buffer=decoded;source.connect(offline.destination);source.start(0);
+     const mono=await offline.startRendering(),opts={chunk_length_s:30,stride_length_s:5,return_timestamps:true};
+     if(lang)opts.language=lang;
+     const result=await asr(mono.getChannelData(0),opts),parts=Array.isArray(result.chunks)?result.chunks.map(c=>(c.text||"").trim()).filter(Boolean):[];
+     transcriptParts.push(parts.length?parts.join(" "):(result.text||"").trim());
+     state.nextChunk=i+1;state.updatedAt=new Date().toISOString();state.transcript=transcriptParts.join("\n");
+     saveLongDubState(state);el("aiTranscript").value=state.transcript;
+     status.textContent="Saved local progress · "+(i+1)+" / "+total+" chunks";
+    }
+    el("aiTranscript").value=state.transcript||transcriptParts.join("\n");
+    localStorage.removeItem(LONG_DUB_STATE_KEY);status.textContent="Local transcription complete · "+total+" chunks";
+   }finally{media.pause();media.removeAttribute("src");media.load();URL.revokeObjectURL(mediaUrl)}
+  }else{
+   const r=await api("/api/transcribe",{method:"POST",headers:{"content-type":file.type||"application/octet-stream"},body:file});
+   el("aiTranscript").value=r.text||"No speech detected.";
+  }
  });
  el("aiUseTranscript").onclick=()=>{el("aiDubText").value=el("aiTranscript").value};
  el("aiTranslateRun").onclick=()=>run(el("aiTranslateRun"),"Translating…",async()=>{
