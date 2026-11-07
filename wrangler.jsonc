@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shadow-anime-studio",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-07",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "ai": { "binding": "AI" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "shadow-anime-studio",
+      "database_id": "1e4ceac6-6ca0-4413-ba71-642f7c97fc01"
+    }
+  ]
+}
