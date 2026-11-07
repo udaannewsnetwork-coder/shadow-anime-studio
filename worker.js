@@ -76,7 +76,7 @@ export default {
           const body = await readJson(request);
           const prompt = String(body.prompt||"").trim();
           if (!prompt || prompt.length > 2000) return err("Image prompt must be 1–2000 characters.");
-          const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell",{prompt,steps:4,seed:Math.floor(Math.random()*2147483647)});
+          const result = await env.AI.run("@cf/black-forest-labs/flux-1-schnell",{prompt,steps:4});
           if (!result?.image) return err("Image model returned no image.",502);
           return json({ok:true,model:"@cf/black-forest-labs/flux-1-schnell",mime:"image/jpeg",dataUrl:"data:image/jpeg;base64,"+result.image});
         }
