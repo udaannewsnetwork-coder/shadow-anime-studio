@@ -758,7 +758,7 @@ updateStats();
  }
  const cloudHeaders=()=>({"content-type":"application/json","X-Workspace-Key":workspaceKey()});
  el("aiCloudSave").onclick=()=>run(el("aiCloudSave"),"Saving…",async()=>{
-  const data={lines:window.lines||[],scenes:window.scenes||[],characters:window.characters||[],historyItems:window.historyItems||[]};
+  let data={};try{data=JSON.parse(localStorage.getItem("shadowWorkspace")||"{}")}catch(e){};data={lines:data.lines||[],scenes:data.scenes||[],characters:data.characters||[],historyItems:data.historyItems||[]};
   const r=await api("/api/projects",{method:"POST",headers:cloudHeaders(),body:JSON.stringify({title:"SHADOW Anime Workspace",data})});
   el("aiCloudStatus").textContent="Saved to Cloudflare D1 · "+r.updated_at;
  });
