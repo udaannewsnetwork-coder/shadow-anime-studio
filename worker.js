@@ -17,6 +17,18 @@ async function ensureSchema(db) {
     data_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
   )`).run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_projects_workspace ON projects(workspace_key, updated_at)").run();
+  await db.prepare("CREATE TABLE IF NOT EXISTS api_usage (ip TEXT NOT NULL, day TEXT NOT NULL, action TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(ip,day,action))").run();
+}
+async function enforceLimit(db, request, action, limit) {
+  await ensureSchema(db);
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const day = new Date().toISOString().slice(0,10);
+  const row = await db.prepare("INSERT INTO api_usage(ip,day,action,count) VALUES(?,?,?,1) ON CONFLICT(ip,day,action) DO UPDATE SET count=count+1 RETURNING count").bind(ip,day,action).first();
+  if (Number(row?.count || 0) > limit) {
+    const error = new Error("Daily free safety limit reached for " + action + ". Try again tomorrow.");
+    error.status = 429;
+    throw error;
+  }
 }
 async function readJson(request) {
   const len = Number(request.headers.get("content-length") || 0);
@@ -45,7 +57,7 @@ export default {
             note:"Workers AI has a limited free daily allowance. Media cloud storage activates after R2 is enabled and bound."});
         }
         if (!env.AI) return err("AI engine binding is not configured yet.",503);
-        if (url.pathname === "/api/story" && request.method === "POST") {
+        if (url.pathname === "/api/story" && request.method === "POST") {\n          if (env.DB) await enforceLimit(env.DB, request, "story", 30);
           const body = await readJson(request);
           const idea = String(body.idea || "").trim();
           if (!idea || idea.length > 5000) return err("Story idea must be 1–5000 characters.");
@@ -58,7 +70,7 @@ export default {
           });
           return json({ok:true,engine:"Cloudflare Workers AI",model:"@cf/meta/llama-3.2-3b-instruct",content:getModelText(result)});
         }
-        if (url.pathname === "/api/image" && request.method === "POST") {
+        if (url.pathname === "/api/image" && request.method === "POST") {\n          if (env.DB) await enforceLimit(env.DB, request, "image", 12);
           const body = await readJson(request);
           const prompt = String(body.prompt||"").trim();
           if (!prompt || prompt.length > 2000) return err("Image prompt must be 1–2000 characters.");
@@ -66,7 +78,7 @@ export default {
           if (!result?.image) return err("Image model returned no image.",502);
           return json({ok:true,model:"@cf/black-forest-labs/flux-1-schnell",mime:"image/jpeg",dataUrl:"data:image/jpeg;base64,"+result.image});
         }
-        if (url.pathname === "/api/transcribe" && request.method === "POST") {
+        if (url.pathname === "/api/transcribe" && request.method === "POST") {\n          if (env.DB) await enforceLimit(env.DB, request, "transcribe", 12);
           const type = request.headers.get("content-type") || "";
           if (!type.includes("audio/") && !type.includes("application/octet-stream")) return err("Send an audio file as the raw request body with its audio content type.");
           const buffer = await request.arrayBuffer();
@@ -74,7 +86,7 @@ export default {
           const result = await env.AI.run("@cf/openai/whisper-large-v3-turbo",{audio:[...new Uint8Array(buffer)],task:"transcribe"});
           return json({ok:true,model:"@cf/openai/whisper-large-v3-turbo",text:result?.text||result?.transcription_info?.text||"",vtt:result?.vtt||"",segments:result?.segments||[]});
         }
-        if (url.pathname === "/api/translate" && request.method === "POST") {
+        if (url.pathname === "/api/translate" && request.method === "POST") {\n          if (env.DB) await enforceLimit(env.DB, request, "translate", 40);
           const body = await readJson(request);
           const source = String(body.text||"").trim();
           if (!source || source.length > 6000) return err("Text must be 1–6000 characters.");
@@ -86,7 +98,7 @@ export default {
           });
           return json({ok:true,model:"@cf/meta/llama-3.2-3b-instruct",translation:getModelText(result)});
         }
-        if (url.pathname === "/api/tts" && request.method === "POST") {
+        if (url.pathname === "/api/tts" && request.method === "POST") {\n          if (env.DB) await enforceLimit(env.DB, request, "tts", 20);
           const body = await readJson(request);
           const text = String(body.text||"").trim();
           if (!text || text.length > 2500) return err("Dialogue must be 1–2500 characters.");
@@ -122,7 +134,7 @@ export default {
         }
         return err("API route not found.",404);
       } catch (e) {
-        return err(e?.message || "Unexpected server error.",500);
+        return err(e?.message || "Unexpected server error.",e?.status || 500);
       }
     }
     return env.ASSETS.fetch(request);
