@@ -50,26 +50,45 @@ export default {
       }});
       try {
         if (url.pathname === "/api/health" && request.method === "GET") {
-          return json({ok:true,service:"SHADOW Anime Studio API",version:"0.1.0",
+          return json({ok:true,service:"SHADOW Anime Studio API",version:"0.2.0",
             engines:{text:!!env.AI,image:!!env.AI,speechToText:!!env.AI,textToSpeech:!!env.AI},
             storage:{database:!!env.DB,mediaBucket:!!env.MEDIA},
-            models:{text:"@cf/meta/llama-3.2-3b-instruct",image:"@cf/black-forest-labs/flux-1-schnell",speechToText:"@cf/openai/whisper-large-v3-turbo",textToSpeech:"@cf/myshell-ai/melotts"},
+            models:{text:"@cf/zai-org/glm-4.7-flash",chat:"@cf/zai-org/glm-4.7-flash",story:"@cf/zai-org/glm-4.7-flash",translation:"@cf/zai-org/glm-4.7-flash",image:"@cf/black-forest-labs/flux-1-schnell",speechToText:"@cf/openai/whisper-large-v3-turbo",textToSpeech:"@cf/myshell-ai/melotts"},
             note:"Workers AI has a limited free daily allowance. Media cloud storage activates after R2 is enabled and bound."});
         }
         if (!env.AI) return err("AI engine binding is not configured yet.",503);
+        if (url.pathname === "/api/chat" && request.method === "POST") {
+          if (env.DB) await enforceLimit(env.DB, request, "chat", 35);
+          const body = await readJson(request);
+          const incoming = Array.isArray(body.messages) ? body.messages.slice(-14) : [];
+          if (!incoming.length) return err("Send a message to SHADOW AI first.");
+          const messages = [{
+            role:"system",
+            content:"You are SHADOW, the dedicated creative AI co-pilot inside SHADOW Anime Studio. Help the creator produce an original, coherent Japanese 2D anime with consistent characters, hand-drawn-style linework and cel shading (avoid glossy 3D aesthetics). The creator's series features Aarop/Shadow, Kai, Lyra, Commander Raven, Narrator and System; use these only when relevant and never overwrite established canon without asking. Help with story development, episode screenplays, shot-by-shot storyboards, character bibles, scene prompts, Hindi/Hinglish dubbing, lip-sync-friendly dialogue, subtitles, editing plans and production troubleshooting. Reply naturally in the language the user uses (Hindi/Hinglish by default). Be practical and beginner-friendly. Distinguish text/prompt generation from actual image, audio or video rendering: never claim you have rendered a video or edited a file unless a tool actually did so. Keep continuity and ask one concise clarification only when essential."
+          }];
+          for (const item of incoming) {
+            if (!item || !["user","assistant"].includes(item.role)) continue;
+            const content = String(item.content || "").trim();
+            if (content && content.length <= 5000) messages.push({role:item.role,content});
+          }
+          if (messages.length < 2) return err("Message is empty.");
+          const model = "@cf/zai-org/glm-4.7-flash";
+          const result = await env.AI.run(model,{messages,max_tokens:2200,temperature:0.65});
+          return json({ok:true,engine:"Cloudflare Workers AI",model,reply:getModelText(result)});
+        }
         if (url.pathname === "/api/story" && request.method === "POST") {
           if (env.DB) await enforceLimit(env.DB, request, "story", 30);
           const body = await readJson(request);
           const idea = String(body.idea || "").trim();
           if (!idea || idea.length > 5000) return err("Story idea must be 1–5000 characters.");
-          const result = await env.AI.run("@cf/meta/llama-3.2-3b-instruct", {
+          const result = await env.AI.run("@cf/zai-org/glm-4.7-flash", {
             messages:[
               {role:"system",content:"You are SHADOW Anime Studio's anime story editor. Respond in the language requested. Create original, coherent anime concepts. Do not claim to generate video. Return clear headings, characters, and 5 scenes."},
               {role:"user",content:"Create an original anime episode package. Genre: "+String(body.genre||"Fantasy").slice(0,80)+". Language: "+String(body.language||"Hindi").slice(0,40)+". Idea: "+idea+"\nInclude title, logline, 3 characters with visual descriptions, and 5 scenes with action, dialogue, and image prompts."}
             ],
             max_tokens:1800,temperature:0.8
           });
-          return json({ok:true,engine:"Cloudflare Workers AI",model:"@cf/meta/llama-3.2-3b-instruct",content:getModelText(result)});
+          return json({ok:true,engine:"Cloudflare Workers AI",model:"@cf/zai-org/glm-4.7-flash",content:getModelText(result)});
         }
         if (url.pathname === "/api/image" && request.method === "POST") {
           if (env.DB) await enforceLimit(env.DB, request, "image", 12);
@@ -94,13 +113,13 @@ export default {
           const body = await readJson(request);
           const source = String(body.text||"").trim();
           if (!source || source.length > 6000) return err("Text must be 1–6000 characters.");
-          const result = await env.AI.run("@cf/meta/llama-3.2-3b-instruct",{
+          const result = await env.AI.run("@cf/zai-org/glm-4.7-flash",{
             messages:[
               {role:"system",content:"You are a professional anime dubbing translator. Translate faithfully into natural spoken Hindi. Preserve character names, intent, emotion, and concise lip-sync-friendly phrasing. Return only the translated dialogue."},
               {role:"user",content:"Translate this dialogue into natural spoken Hindi:\n"+source}
             ],max_tokens:1200,temperature:0.25
           });
-          return json({ok:true,model:"@cf/meta/llama-3.2-3b-instruct",translation:getModelText(result)});
+          return json({ok:true,model:"@cf/zai-org/glm-4.7-flash",translation:getModelText(result)});
         }
         if (url.pathname === "/api/tts" && request.method === "POST") {
           if (env.DB) await enforceLimit(env.DB, request, "tts", 20);
