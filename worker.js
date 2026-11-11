@@ -112,7 +112,7 @@ export default {
           if (url.pathname === "/api/auth/login" && request.method === "POST") {
             const body=await readJson(request);const email=String(body.email||"").trim().toLowerCase();const password=String(body.password||"");
             const row=await env.DB.prepare("SELECT id,email,password_salt,password_hash FROM users WHERE email=?").bind(email).first();
-            if(!row||(await hashPassword(password,row.password_salt))!==row.password_hashreturn err("Email ya password sahi nahi hai.",401);
+            if(!row||(await hashPassword(password,row.password_salt))!==row.password_hash)return err("Email ya password sahi nahi hai.",401);
             const token=await createSession(env.DB,row.id);
             return new Response(JSON.stringify({ok:true,user:{id:row.id,email:row.email}}),{headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store","set-cookie":sessionCookie(token)}});
           }
